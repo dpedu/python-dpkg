@@ -1,6 +1,8 @@
-from distutils.core import setup
+from setuptools import setup
 
-__VERSION__ = '1.3.1'
+
+__VERSION__ = '1.3.2'
+
 
 setup(
     name='pydpkg',
@@ -12,9 +14,9 @@ setup(
     url='https://github.com/theclimatecorporation/python-dpkg',
     download_url='https://github.com/theclimatecorporation/python-dpkg/tarball/%s' % __VERSION__,
     keywords=['apt', 'debian', 'dpkg', 'packaging'],
-    install_requires=[
+    setup_requires=[
         'arpy==1.1.1',
-        'six==1.10.0',
+        'six>=1.10.0',
         'PGPy==0.4.1'
     ],
     extras_require={
@@ -31,6 +33,5 @@ setup(
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: Implementation :: CPython",
-        "Topic :: System :: Archiving :: Packaging",
-        ]
+        "Topic :: System :: Archiving :: Packaging"]
 )

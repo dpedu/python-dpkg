@@ -14,6 +14,7 @@ import tarfile
 
 from collections import defaultdict
 from gzip import GzipFile
+import lzma
 from email import message_from_string, message_from_file
 from functools import cmp_to_key
 
@@ -23,6 +24,13 @@ import pgpy
 from arpy import Archive
 
 REQUIRED_HEADERS = ('package', 'version', 'architecture')
+
+
+control_openers = {
+    'gz': lambda fob: GzipFile(fileobj=fob),
+    'xz': lambda fob: lzma.open(fob, "r")
+}
+
 
 logging.basicConfig()
 
@@ -47,7 +55,7 @@ class DpkgMissingControlFile(DpkgError):
     pass
 
 
-class DpkgMissingControlGzipFile(DpkgError):
+class DpkgMissingControlArchive(DpkgError):
     """No control.tar.gz file found in dpkg file"""
     pass
 
@@ -288,16 +296,21 @@ class Dpkg(object):
     def _process_dpkg_file(self, filename):
         dpkg_archive = Archive(filename)
         dpkg_archive.read_all_headers()
-        try:
-            control_tgz = dpkg_archive.archived_files[b'control.tar.gz']
-        except KeyError:
-            raise DpkgMissingControlGzipFile(
-                'Corrupt dpkg file: no control.tar.gz file in ar archive.')
+        control_opener = None
+        control_tgz = None
+        for ext, opener in control_openers.items():
+            control_name = b''.join([b'control.tar.', ext.encode()])
+            if control_name in dpkg_archive.archived_files:
+                control_tgz = dpkg_archive.archived_files[control_name]
+                control_opener = opener
+                break
+        if not control_tgz:
+            raise DpkgMissingControlArchive(
+                'Corrupt dpkg file: no control file archive in ar archive.')
         self._log.debug('found controlgz: %s', control_tgz)
-
         # have to pass through BytesIO because gzipfile doesn't support seek
         # from end; luckily control tars are tiny
-        with GzipFile(fileobj=control_tgz) as gzf:
+        with control_opener(control_tgz) as gzf:
             self._log.debug('opened gzip file: %s', gzf)
             with tarfile.open(fileobj=io.BytesIO(gzf.read())) as control_tar:
                 self._log.debug('opened tar file: %s', control_tar)
